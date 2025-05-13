@@ -10,6 +10,28 @@ def _normalize(text: str) -> str:
 # 1) Expert playbook of Excel/VBA scenarios
 # ------------------------------------------------------------------ #
 SCENARIOS = {
+    "pivot": [
+        {
+            "match": ["pivot", "calculated field", "grouping", "pivot table"],
+            "title": "Use PivotCache to refresh without flicker",
+            "description": (
+                "If you're looping over PivotTables or refreshing them frequently, "
+                "use the .PivotCache.Refresh method to reduce lag."
+            ),
+            "reference": None,
+            "tip": "Dim pc As PivotCache: Set pc = pt.PivotCache: pc.Refresh"
+        },
+        {
+            "match": ["field", "calculated field", "formula"],
+            "title": "Add calculated fields programmatically",
+            "description": (
+                "You can insert calculated fields directly via VBA using .CalculatedFields.Add."
+            ),
+            "reference": None,
+            "tip": "pt.CalculatedFields.Add \"Margin\", \"=Revenue - Cost\", True"
+        }
+    ],
+    {
     # ----------  USERFORMS  ----------
     "userform": [
         {
