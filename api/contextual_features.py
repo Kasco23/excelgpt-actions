@@ -31,7 +31,7 @@ SCENARIOS = {
             "tip": "pt.CalculatedFields.Add \"Margin\", \"=Revenue - Cost\", True"
         }
     ],
-    {
+
     # ----------  USERFORMS  ----------
     "userform": [
         {
@@ -63,6 +63,7 @@ SCENARIOS = {
             "tip": "Private WithEvents mBus As Scripting.Dictionary  ' ... raise mBus(\"Change\") = True"
         }
     ],
+
     # ----------  PERFORMANCE  ----------
     "performance": [
         {
@@ -85,6 +86,7 @@ SCENARIOS = {
             "tip": "With Application: .ScreenUpdating=False: ActiveSheet.DisplayPageBreaks=False: End With"
         }
     ],
+
     # ----------  CHARTS  ----------
     "charts": [
         {
@@ -105,7 +107,7 @@ SCENARIOS = {
             "reference": None,
             "tip": "Application.ExecuteExcel4Macro \"DISPOFF\" : '...update series...' : Application.ExecuteExcel4Macro \"DISPON\""
         }
-    ],
+    ]
 }
 
 # ------------------------------------------------------------------ #
