@@ -1,34 +1,35 @@
 from http.server import BaseHTTPRequestHandler
-import json
-import re
+import json, re
 
+# ────────────────────────────────────────────────────────────────
 def _normalize(text: str) -> str:
-    """Lower‑case & collapse whitespace for fuzzy matching."""
+    """lower‑case & collapse whitespace for fuzzy matching"""
     return re.sub(r"\s+", " ", text or "").lower().strip()
 
-# ------------------------------------------------------------------ #
+
+# ----------------------------------------------------------------
 # 1) Expert playbook of Excel/VBA scenarios
-# ------------------------------------------------------------------ #
+# ----------------------------------------------------------------
 SCENARIOS = {
     "pivot": [
         {
             "match": ["pivot", "calculated field", "grouping", "pivot table"],
             "title": "Use PivotCache to refresh without flicker",
             "description": (
-                "If you're looping over PivotTables or refreshing them frequently, "
-                "use the .PivotCache.Refresh method to reduce lag."
+                "When looping or frequent refreshes, call .PivotCache.Refresh "
+                "instead of pt.RefreshTable to avoid UI lag."
             ),
             "reference": None,
             "tip": "Dim pc As PivotCache: Set pc = pt.PivotCache: pc.Refresh"
         },
         {
             "match": ["field", "calculated field", "formula"],
-            "title": "Add calculated fields programmatically",
+            "title": "Insert calculated fields programmatically",
             "description": (
-                "You can insert calculated fields directly via VBA using .CalculatedFields.Add."
+                "Use .CalculatedFields.Add to add or update formulas in code."
             ),
             "reference": None,
-            "tip": "pt.CalculatedFields.Add \"Margin\", \"=Revenue - Cost\", True"
+            "tip": 'pt.CalculatedFields.Add "Margin", "=Revenue-Cost", True'
         }
     ],
 
@@ -36,31 +37,24 @@ SCENARIOS = {
     "userform": [
         {
             "match": ["multipage", "tabs", "multi page"],
-            "title": "Use MultiPage control for tabbed sections",
-            "description": (
-                "MultiPage lets you group related inputs into tabs and keeps forms compact."
-            ),
+            "title": "MultiPage for tabbed sections",
+            "description": "Group related inputs into tabs to keep large forms compact.",
             "reference": "Microsoft Forms 2.0 Object Library",
-            "tip": "Insert ➜ ActiveX ➜ MultiPage  •  In code: With Me.MultiPage1.Pages(0)..."
+            "tip": "Insert → ActiveX → MultiPage"
         },
         {
             "match": ["calendar", "date", "monthview"],
-            "title": "MonthView control for reliable date picking",
-            "description": (
-                "MonthView offers an intuitive calendar UI and avoids manual date validation."
-            ),
-            "reference": "Microsoft Windows Common Controls‑2 6.0 (MSCOMCT2.OCX)",
-            "tip": "If MonthView isn't listed, register MSCOMCT2.OCX then enable via Tools ➜ Additional Controls."
+            "title": "MonthView control for date picking",
+            "description": "Native calendar UI avoids manual date validation.",
+            "reference": "MSCOMCT2.OCX",
+            "tip": "Register MSCOMCT2, then Tools → Additional Controls → MonthView"
         },
         {
             "match": ["events", "broadcast", "notify", "scripting.dictionary"],
-            "title": "Broadcast custom events with WithEvents Dictionary",
-            "description": (
-                "Combine `WithEvents` and `Scripting.Dictionary` to raise events from models "
-                "and have multiple UserForms listen without tight coupling."
-            ),
+            "title": "Broadcast custom events via WithEvents Dictionary",
+            "description": "Raise events from models and let multiple forms listen loosely.",
             "reference": "Microsoft Scripting Runtime",
-            "tip": "Private WithEvents mBus As Scripting.Dictionary  ' ... raise mBus(\"Change\") = True"
+            "tip": "Private WithEvents mBus As Scripting.Dictionary"
         }
     ],
 
@@ -68,22 +62,17 @@ SCENARIOS = {
     "performance": [
         {
             "match": ["loops", "long", "recalc"],
-            "title": "Manual calculation mode inside long loops",
-            "description": (
-                "Set `Application.Calculation = xlCalculationManual` before bulk updates "
-                "then restore to prevent Excel recalculating after every cell write."
-            ),
+            "title": "Manual calculation during long loops",
+            "description": "Set Application.Calculation = xlCalculationManual, restore after.",
             "reference": None,
-            "tip": "Application.Calculation = xlCalculationManual  ' ...code...  Application.CalculateFull"
+            "tip": "Application.Calculation = xlCalculationManual"
         },
         {
             "match": ["screen", "flicker"],
-            "title": "Turn off ScreenUpdating & PageBreaks for flicker‑free speed",
-            "description": (
-                "Disabling these two flags can reduce UI churn by 90 % on big sheets."
-            ),
+            "title": "Disable ScreenUpdating & PageBreaks",
+            "description": "Reduces UI churn by ~90 % on big sheets.",
             "reference": None,
-            "tip": "With Application: .ScreenUpdating=False: ActiveSheet.DisplayPageBreaks=False: End With"
+            "tip": "With Application: .ScreenUpdating=False: ActiveSheet.DisplayPageBreaks=False"
         }
     ],
 
@@ -91,84 +80,89 @@ SCENARIOS = {
     "charts": [
         {
             "match": ["export", "pdf", "print"],
-            "title": "One‑line PDF export with Chart.ExportAsFixedFormat",
-            "description": (
-                "Export any chart to PDF/XPS without touching `Print` dialogs."
-            ),
+            "title": "One‑line PDF export",
+            "description": "Use Chart.ExportAsFixedFormat to skip the Print dialog.",
             "reference": None,
             "tip": "ActiveChart.ExportAsFixedFormat xlTypePDF, \"C:\\Temp\\Chart.pdf\""
         },
         {
             "match": ["animate", "ani", "smooth"],
-            "title": "Flicker‑free animation via hidden XLM DISPOFF/DISPON",
-            "description": (
-                "Call legacy XLM commands to suppress redraw between frame updates."
-            ),
+            "title": "Flicker‑free animation (DISPOFF/DISPON)",
+            "description": "Call legacy XLM to suppress redraw between frames.",
             "reference": None,
-            "tip": "Application.ExecuteExcel4Macro \"DISPOFF\" : '...update series...' : Application.ExecuteExcel4Macro \"DISPON\""
+            "tip": "Application.ExecuteExcel4Macro \"DISPOFF\" : … : Application.ExecuteExcel4Macro \"DISPON\""
         }
     ]
 }
 
-# ------------------------------------------------------------------ #
-# 2) Core handler
-# ------------------------------------------------------------------ #
+# ----------------------------------------------------------------
+# 2) Generic keyword → hint map (fallback)
+# ----------------------------------------------------------------
+GENERIC_HINTS = {
+    "pivot":      "Use PivotCache.Refresh and CalculatedFields.Add for dynamic fields.",
+    "userform":   "Try MultiPage for tabs and MonthView for date inputs.",
+    "chart":      "Chart.ExportAsFixedFormat makes instant PDFs; DISPOFF cuts flicker.",
+    "performance":"Turn off ScreenUpdating and switch calc to Manual inside loops."
+}
+
+# ----------------------------------------------------------------
+# 3) HTTP handler
+# ----------------------------------------------------------------
 class handler(BaseHTTPRequestHandler):
-    def _json_response(self, data, status=200):
+    def _json(self, obj, status=200):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps(data, indent=2).encode())
+        self.wfile.write(json.dumps(obj, indent=2).encode())
 
-    # ---------- POST (primary) ----------
+    # ---------- POST ----------
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
-        raw    = self.rfile.read(length or 0)
-        try:
-            req = json.loads(raw or "{}")
-        except json.JSONDecodeError:
-            return self._json_response({"error": "Invalid JSON body"}, 400)
+        data   = json.loads(self.rfile.read(length) or "{}")
 
-        ctx   = _normalize(req.get("context", ""))
-        stype = _normalize(req.get("type", "general"))
-        lang  = _normalize(req.get("language", "vba"))
+        ctx   = _normalize(data.get("context", ""))
+        stype = _normalize(data.get("type", "general"))
 
-        matches = []
+        matches = [
+            rec for rec in SCENARIOS.get(stype, [])
+            if any(k in ctx for k in rec["match"])
+        ]
 
-        # 1) direct type match
-        for rec in SCENARIOS.get(stype, []):
-            if any(k in ctx for k in rec["match"]):
-                matches.append(rec)
-
-        # 2) fallback: scan all scenarios if nothing matched yet
+        # fallback scan across all topics
         if not matches:
-            for topic, rules in SCENARIOS.items():
+            for rules in SCENARIOS.values():
                 for rec in rules:
                     if any(k in ctx for k in rec["match"]):
                         matches.append(rec)
                         break
+                if matches: break
 
-        # 3) final fallback
+        # generic hint fallback
+        if not matches:
+            for kw, hint in GENERIC_HINTS.items():
+                if kw in ctx:
+                    matches.append({
+                        "title": f"General tip for '{kw}' tasks",
+                        "description": hint,
+                        "reference": None,
+                        "tip": None
+                    })
+                    break
+
+        # final "need more detail"
         if not matches:
             matches.append({
-                "title": "No specific pro tips found",
-                "description": "Try adding more detail or keywords (e.g. 'MultiPage', 'MonthView', 'animation').",
+                "title": "Need more detail",
+                "description": "Add keywords like 'pivot', 'chart', 'userform', or describe the control you’re using.",
                 "reference": None,
                 "tip": None
             })
 
-        self._json_response({
+        self._json({
             "topic": stype,
-            "recommendations": matches[: req.get("maxItems", 5)]
+            "recommendations": matches[: data.get("maxItems", 5)]
         })
 
-    # ---------- GET (nice for browsers) ----------
+    # ---------- GET ----------
     def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain")
-        self.end_headers()
-        msg = (
-            "ExcelGPT Contextual Features API\n"
-            "POST JSON: {context:'text', type:'userform|charts|performance', language:'vba|script'}"
-        )
-        self.wfile.write(msg.encode())
+        self._json({"hint": "POST JSON {context:'build XYZ', type:'charts'...} for recommendations"})
